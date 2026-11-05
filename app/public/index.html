@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Building Helpdesk: Response-Time Report</title>
+  <title>Building Helpdesk: Response-Time Report & SLA Dashboard</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -14,6 +14,7 @@
       color: #111827;
       margin-top: 10px;
       margin-bottom: 12px;
+      font-size: 24px;
     }
     h2 {
       color: #111827;
@@ -31,7 +32,7 @@
     }
     .filter-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 14px;
       align-items: flex-end;
     }
@@ -46,7 +47,7 @@
       color: #374151;
     }
     input, select, button {
-      padding: 8px 12px;
+      padding: 9px 12px;
       border: 1px solid #d1d5db;
       border-radius: 6px;
       font-size: 14px;
@@ -58,7 +59,7 @@
       cursor: pointer;
       font-weight: 600;
       transition: background 0.15s ease;
-      height: 38px;
+      height: 40px;
     }
     button.btn-primary:hover {
       background: #1d4ed8;
@@ -123,13 +124,13 @@
   </style>
 </head>
 <body>
-  <h1>Building Helpdesk: Response-Time Report</h1>
+  <h1>🏢 Building Helpdesk: Response-Time Report & SLA Dashboard</h1>
 
   <div id="syncStatus" class="sync-indicator sync-loading">
     Checking system readiness...
   </div>
 
-  <!-- SINGLE CONTROLS PANEL (From, To, Filters, Sorting) -->
+  <!-- SINGLE INTEGRATED CONTROLS PANEL -->
   <div class="panel">
     <form id="filterForm" onsubmit="event.preventDefault(); runReport();">
       <div class="filter-grid">
@@ -142,50 +143,56 @@
           <input type="date" id="toDate" value="2026-10-31" required>
         </div>
         <div class="form-group">
-          <label>Building / Site:</label>
+          <label>Building / Location:</label>
           <select id="siteId">
-            <option value="">All Buildings</option>
-            <option value="11">Site 11 (Singapore)</option>
-            <option value="12">Site 12 (Sydney)</option>
-            <option value="13">Site 13 (Jakarta)</option>
+            <option value="">All Buildings (Singapore, Sydney, Jakarta)</option>
+            <option value="11">Singapore (Tower)</option>
+            <option value="12">Sydney (Court)</option>
+            <option value="13">Jakarta (Plaza)</option>
           </select>
         </div>
         <div class="form-group">
-          <label>Completed Late:</label>
-          <select id="lateFilter">
-            <option value="">All</option>
-            <option value="true">Late Only (true)</option>
-            <option value="false">On Time Only (false)</option>
+          <label>Responder / Staff:</label>
+          <select id="responderId">
+            <option value="">All Responders</option>
           </select>
         </div>
         <div class="form-group">
-          <label>Within Target:</label>
+          <label>SLA Target:</label>
           <select id="targetFilter">
-            <option value="">All</option>
-            <option value="true">Within Target (true)</option>
-            <option value="false">Exceeded Target (false)</option>
+            <option value="">All SLA Statuses</option>
+            <option value="true">Met Target (Within SLA)</option>
+            <option value="false">Missed Target (Exceeded SLA)</option>
           </select>
         </div>
         <div class="form-group">
-          <label>Sort By:</label>
+          <label>Completion Status:</label>
+          <select id="lateFilter">
+            <option value="">All Statuses</option>
+            <option value="false">Completed On Time</option>
+            <option value="true">Completed Late</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Sort Order:</label>
           <select id="sortField">
-            <option value="id">id (Ascending)</option>
-            <option value="-id">-id (Descending)</option>
-            <option value="response_business_minutes">response_business_minutes (Ascending)</option>
-            <option value="-response_business_minutes">-response_business_minutes (Descending)</option>
+            <option value="id">Request ID (Oldest first)</option>
+            <option value="-id">Request ID (Newest first)</option>
+            <option value="response_business_minutes">Response Time (Fastest first)</option>
+            <option value="-response_business_minutes">Response Time (Slowest first)</option>
           </select>
         </div>
         <div class="form-group">
-          <label>Limit per page:</label>
+          <label>Rows per page:</label>
           <select id="limitPerPage">
-            <option value="25">25</option>
-            <option value="50" selected>50</option>
-            <option value="100">100</option>
-            <option value="200">200</option>
+            <option value="25">25 rows</option>
+            <option value="50" selected>50 rows</option>
+            <option value="100">100 rows</option>
+            <option value="200">200 rows</option>
           </select>
         </div>
         <div class="form-group">
-          <button type="submit" id="submitBtn" class="btn-primary">▶ Run Report</button>
+          <button type="submit" id="submitBtn" class="btn-primary">▶ Apply & Run Report</button>
         </div>
       </div>
     </form>
@@ -194,7 +201,7 @@
 
   <!-- RESPONDERS SUMMARY (LEVEL 1) -->
   <div class="panel">
-    <h2>Responders Summary</h2>
+    <h2>Responders Performance Summary</h2>
     <table id="respondersTable">
       <thead>
         <tr>
@@ -213,17 +220,17 @@
 
   <!-- REQUEST DETAILS & BROWSING (LEVEL 1 & LEVEL 4) -->
   <div class="panel">
-    <h2>Request Details (<span id="reqCount">0</span> rows displayed)</h2>
+    <h2>Detailed Requests (<span id="reqCount">0</span> rows displayed)</h2>
     <table id="requestsTable">
       <thead>
         <tr>
           <th>Request ID</th>
-          <th>Site ID</th>
-          <th>Responder ID</th>
-          <th>Responder</th>
-          <th>Response Time (business mins)</th>
+          <th>Building</th>
+          <th>Staff ID</th>
+          <th>Responder Name</th>
+          <th>Response Time (Business Mins)</th>
           <th>Within Target?</th>
-          <th>Completed Late?</th>
+          <th>Completion Status</th>
         </tr>
       </thead>
       <tbody>
@@ -233,13 +240,20 @@
 
     <div class="pagination-bar">
       <span id="pageInfo" style="color: #6b7280; font-size: 14px;"></span>
-      <button id="nextBtn" class="btn-primary" onclick="loadNextPage()" disabled>Next Page (via next_cursor) ➔</button>
+      <button id="nextBtn" class="btn-primary" onclick="loadNextPage()" disabled>Next Page (via cursor) ➔</button>
     </div>
   </div>
 
   <script>
+    const SITE_NAMES = {
+      11: "Singapore (Tower)",
+      12: "Sydney (Court)",
+      13: "Jakarta (Plaza)"
+    };
+
     let nextCursor = null;
     let hasAutoLoaded = false;
+    let respondersPopulated = false;
 
     async function runReport() {
       const from = document.getElementById("fromDate").value;
@@ -262,6 +276,18 @@
         const elapsed = (performance.now() - t0).toFixed(1);
 
         statusEl.innerHTML = `Loaded in <strong>${elapsed}ms</strong>. Total range: <strong>${slaData.requests ? slaData.requests.length : 0}</strong> requests across <strong>${slaData.responders ? slaData.responders.length : 0}</strong> staff.`;
+
+        // Populate Responder dropdown if not yet populated
+        if (!respondersPopulated && slaData.responders) {
+          const respSelect = document.getElementById("responderId");
+          for (const r of slaData.responders) {
+            const opt = document.createElement("option");
+            opt.value = r.id;
+            opt.textContent = `${r.name} (ID: ${r.id})`;
+            respSelect.appendChild(opt);
+          }
+          respondersPopulated = true;
+        }
 
         // Render Responders Table
         const respondersTbody = document.querySelector("#respondersTable tbody");
@@ -293,6 +319,7 @@
       const from = document.getElementById("fromDate").value;
       const to = document.getElementById("toDate").value;
       const site = document.getElementById("siteId").value;
+      const responder = document.getElementById("responderId").value;
       const late = document.getElementById("lateFilter").value;
       const target = document.getElementById("targetFilter").value;
       const sort = document.getElementById("sortField").value;
@@ -301,6 +328,7 @@
 
       const params = new URLSearchParams({ from, to, sort, limit });
       if (site) params.set("site_id", site);
+      if (responder) params.set("responder_id", responder);
       if (late) params.set("late", late);
       if (target) params.set("within_target", target);
       if (cursor) params.set("cursor", cursor);
@@ -319,7 +347,7 @@
       tbody.innerHTML = "";
 
       if (!data.data || data.data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#6b7280; padding:18px;">No matching requests found.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#6b7280; padding:18px;">No matching requests found for selected filters.</td></tr>`;
         document.getElementById("reqCount").textContent = "0";
         document.getElementById("pageInfo").textContent = "";
         return data;
@@ -331,16 +359,18 @@
         const tr = document.createElement("tr");
 
         let targetBadge = '<span class="badge badge-neutral">-</span>';
-        if (req.within_target === true) targetBadge = '<span class="badge badge-success">Yes</span>';
-        else if (req.within_target === false) targetBadge = '<span class="badge badge-danger">No</span>';
+        if (req.within_target === true) targetBadge = '<span class="badge badge-success">Met Target</span>';
+        else if (req.within_target === false) targetBadge = '<span class="badge badge-danger">Missed Target</span>';
 
         let lateBadge = '<span class="badge badge-neutral">-</span>';
         if (req.completed_late === true) lateBadge = '<span class="badge badge-danger">Late</span>';
-        else if (req.completed_late === false) lateBadge = '<span class="badge badge-success">On time</span>';
+        else if (req.completed_late === false) lateBadge = '<span class="badge badge-success">On Time</span>';
+
+        const siteLabel = SITE_NAMES[req.site_id] || `Site ${req.site_id}`;
 
         tr.innerHTML = `
-          <td>#${req.id}</td>
-          <td>Site ${req.site_id}</td>
+          <td><strong>#${req.id}</strong></td>
+          <td>${siteLabel}</td>
           <td>${req.responder_id ?? "-"}</td>
           <td>${req.responder ? escapeHtml(req.responder) : '<span style="color:#9ca3af">Unassigned</span>'}</td>
           <td>${req.response_business_minutes != null ? req.response_business_minutes + " mins" : '<span style="color:#9ca3af">-</span>'}</td>
