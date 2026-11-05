@@ -2,29 +2,270 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Response-time report</title>
+  <title>Response-Time Report & SLA Dashboard</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 24px;
+      color: #1f2937;
+      background: #f9fafb;
+    }
+    h1, h2 {
+      color: #111827;
+      margin-top: 24px;
+      margin-bottom: 12px;
+    }
+    .panel {
+      background: #ffffff;
+      padding: 18px 24px;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    form {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    label {
+      font-weight: 500;
+      font-size: 14px;
+    }
+    input, select, button {
+      padding: 8px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:hover {
+      background: #1d4ed8;
+    }
+    button:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid #e5e7eb;
+      padding: 8px 12px;
+      text-align: left;
+    }
+    th {
+      background: #f3f4f6;
+      font-weight: 600;
+    }
+    tr:nth-child(even) {
+      background: #fafafa;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .badge-success { background: #dcfce7; color: #166534; }
+    .badge-danger { background: #fee2e2; color: #991b1b; }
+    .badge-neutral { background: #f3f4f6; color: #6b7280; }
+    #status {
+      font-weight: 500;
+      margin-top: 8px;
+    }
+    .sync-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 16px;
+    }
+    .sync-ready { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+    .sync-loading { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+  </style>
 </head>
 <body>
-  <h1>Response-time report</h1>
-  <form id="f">
-    <label>From <input type="date" name="from" required></label>
-    <label>To <input type="date" name="to" required></label>
-    <button type="submit">Run report</button>
-  </form>
-  <p id="status"></p>
-  <table id="report" border="1">
-    <thead></thead>
-    <tbody></tbody>
-  </table>
+  <h1>Building Helpdesk: Response-Time Report</h1>
+
+  <div id="syncStatus" class="sync-indicator sync-loading">
+    Checking system readiness...
+  </div>
+
+  <div class="panel">
+    <form id="f">
+      <label>From: <input type="date" name="from" id="fromDate" value="2026-10-01" required></label>
+      <label>To: <input type="date" name="to" id="toDate" value="2026-10-31" required></label>
+      <button type="submit" id="submitBtn">Run report</button>
+    </form>
+    <p id="status"></p>
+  </div>
+
+  <div class="panel">
+    <h2>Responders Summary</h2>
+    <table id="respondersTable">
+      <thead>
+        <tr>
+          <th>Staff Name</th>
+          <th>Staff ID</th>
+          <th>Total Requests</th>
+          <th>Within Target</th>
+          <th>Completed Late</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="5" style="text-align: center; color: #6b7280;">No data loaded yet.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="panel">
+    <h2>Request Details (<span id="reqCount">0</span> rows)</h2>
+    <table id="requestsTable">
+      <thead>
+        <tr>
+          <th>Request ID</th>
+          <th>Site ID</th>
+          <th>Responder</th>
+          <th>Response Time (business mins)</th>
+          <th>Within Target?</th>
+          <th>Completed Late?</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="6" style="text-align: center; color: #6b7280;">No data loaded yet.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
   <script>
+    async function checkReadiness() {
+      const syncEl = document.getElementById("syncStatus");
+      try {
+        const res = await fetch("/ready");
+        if (res.ok) {
+          syncEl.className = "sync-indicator sync-ready";
+          syncEl.textContent = "● Ready (Historical data synchronized & Live polling active)";
+          return true;
+        } else {
+          syncEl.className = "sync-indicator sync-loading";
+          syncEl.textContent = "⏳ Initial sync in progress... Please wait.";
+          return false;
+        }
+      } catch (err) {
+        syncEl.className = "sync-indicator sync-loading";
+        syncEl.textContent = "⏳ Connecting to server...";
+        return false;
+      }
+    }
+
+    setInterval(checkReadiness, 5000);
+    checkReadiness();
+
     document.getElementById("f").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const params = new URLSearchParams(new FormData(e.target));
-      const res = await fetch("/api/sla-report?" + params);
-      const data = await res.json();
-      // TODO: render `data` into the table.
-      document.getElementById("status").textContent = res.status + " " + JSON.stringify(data);
+      const statusEl = document.getElementById("status");
+      const submitBtn = document.getElementById("submitBtn");
+
+      submitBtn.disabled = true;
+      statusEl.textContent = "Loading report data...";
+
+      try {
+        const params = new URLSearchParams(new FormData(e.target));
+        const res = await fetch("/api/sla-report?" + params);
+        const data = await res.json();
+
+        if (!res.ok) {
+          statusEl.textContent = "Error: " + (data.error || res.statusText);
+          return;
+        }
+
+        statusEl.textContent = `Report loaded in ${res.headers.get("x-response-time") || "a few ms"}. Found ${data.requests.length} requests across ${data.responders.length} responders.`;
+
+        // Render Responders Table
+        const respondersTbody = document.querySelector("#respondersTable tbody");
+        respondersTbody.innerHTML = "";
+        if (data.responders.length === 0) {
+          respondersTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#6b7280;">No responders found for this period.</td></tr>`;
+        } else {
+          for (const r of data.responders) {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td><strong>${escapeHtml(r.name)}</strong></td>
+              <td>${r.id}</td>
+              <td>${r.requests}</td>
+              <td><span class="badge badge-success">${r.within_target}</span></td>
+              <td><span class="badge ${r.completed_late > 0 ? "badge-danger" : "badge-neutral"}">${r.completed_late}</span></td>
+            `;
+            respondersTbody.appendChild(tr);
+          }
+        }
+
+        // Render Requests Table
+        document.getElementById("reqCount").textContent = data.requests.length;
+        const requestsTbody = document.querySelector("#requestsTable tbody");
+        requestsTbody.innerHTML = "";
+        
+        // Show first 200 rows if huge to keep browser snappy
+        const displayLimit = Math.min(data.requests.length, 500);
+        for (let i = 0; i < displayLimit; i++) {
+          const req = data.requests[i];
+          const tr = document.createElement("tr");
+          
+          let targetBadge = '<span class="badge badge-neutral">-</span>';
+          if (req.within_target === true) targetBadge = '<span class="badge badge-success">Yes</span>';
+          else if (req.within_target === false) targetBadge = '<span class="badge badge-danger">No</span>';
+
+          let lateBadge = '<span class="badge badge-neutral">-</span>';
+          if (req.completed_late === true) lateBadge = '<span class="badge badge-danger">Late</span>';
+          else if (req.completed_late === false) lateBadge = '<span class="badge badge-success">On time</span>';
+
+          tr.innerHTML = `
+            <td>#${req.id}</td>
+            <td>Site ${req.site_id}</td>
+            <td>${req.responder ? escapeHtml(req.responder) : '<span style="color:#9ca3af">Unassigned</span>'}</td>
+            <td>${req.response_business_minutes != null ? req.response_business_minutes + " mins" : '<span style="color:#9ca3af">-</span>'}</td>
+            <td>${targetBadge}</td>
+            <td>${lateBadge}</td>
+          `;
+          requestsTbody.appendChild(tr);
+        }
+
+        if (data.requests.length > displayLimit) {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `<td colspan="6" style="text-align: center; color: #6b7280; font-style: italic;">... and ${data.requests.length - displayLimit} more rows.</td>`;
+          requestsTbody.appendChild(tr);
+        }
+
+      } catch (err) {
+        statusEl.textContent = "Network error: " + err.message;
+      } finally {
+        submitBtn.disabled = false;
+      }
     });
+
+    function escapeHtml(str) {
+      if (!str) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
   </script>
 </body>
 </html>
