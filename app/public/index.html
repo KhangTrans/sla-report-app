@@ -60,12 +60,33 @@
       font-weight: 600;
       transition: background 0.15s ease;
       height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
     }
     button.btn-primary:hover {
       background: #1d4ed8;
     }
+    button.btn-secondary {
+      background: #f3f4f6;
+      color: #374151;
+      border: 1px solid #d1d5db;
+      cursor: pointer;
+      font-weight: 600;
+      height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    button.btn-secondary:hover {
+      background: #e5e7eb;
+    }
     button:disabled {
-      background: #9ca3af !important;
+      background: #e5e7eb !important;
+      color: #9ca3af !important;
+      border-color: #d1d5db !important;
       cursor: not-allowed !important;
     }
     table {
@@ -119,7 +140,27 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-top: 14px;
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid #e5e7eb;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .pagination-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .page-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 14px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 14px;
     }
   </style>
 </head>
@@ -220,7 +261,7 @@
 
   <!-- REQUEST DETAILS & BROWSING (LEVEL 1 & LEVEL 4) -->
   <div class="panel">
-    <h2>Detailed Requests (<span id="reqCount">0</span> rows displayed)</h2>
+    <h2>Detailed Requests (<span id="reqCount">0</span> rows on this page)</h2>
     <table id="requestsTable">
       <thead>
         <tr>
@@ -238,9 +279,16 @@
       </tbody>
     </table>
 
+    <!-- CLEAR PAGINATION CONTROLS WITH PAGE NUMBERS -->
     <div class="pagination-bar">
-      <span id="pageInfo" style="color: #6b7280; font-size: 14px;"></span>
-      <button id="nextBtn" class="btn-primary" onclick="loadNextPage()" disabled>Next Page (via cursor) ➔</button>
+      <div>
+        <span class="page-badge" id="currentPageBadge">Page 1</span>
+        <span id="pageItemRange" style="color: #4b5563; font-size: 14px; margin-left: 10px; font-weight: 500;"></span>
+      </div>
+      <div class="pagination-controls">
+        <button id="prevBtn" class="btn-secondary" onclick="loadPrevPage()" disabled>◀ Previous Page</button>
+        <button id="nextBtn" class="btn-primary" onclick="loadNextPage()" disabled>Next Page (Page 2) ➔</button>
+      </div>
     </div>
   </div>
 
@@ -255,7 +303,15 @@
     let hasAutoLoaded = false;
     let respondersPopulated = false;
 
+    // Pagination state tracking
+    let currentPage = 1;
+    let cursorHistory = [null]; // cursorHistory[0] is null for Page 1
+
     async function runReport() {
+      // Reset pagination state on new report or filter submission
+      currentPage = 1;
+      cursorHistory = [null];
+
       const from = document.getElementById("fromDate").value;
       const to = document.getElementById("toDate").value;
       const statusEl = document.getElementById("status");
@@ -269,7 +325,7 @@
         // Fetch Level 1 Summary (/api/sla-report)
         const slaPromise = fetch(`/api/sla-report?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`).then(r => r.json());
 
-        // Fetch Level 4 Requests (/api/requests) with active filters
+        // Fetch Level 4 Requests (/api/requests) with active filters (Page 1)
         const reqPromise = fetchRequestsPage(null);
 
         const [slaData, reqData] = await Promise.all([slaPromise, reqPromise]);
@@ -324,7 +380,11 @@
       const target = document.getElementById("targetFilter").value;
       const sort = document.getElementById("sortField").value;
       const limit = document.getElementById("limitPerPage").value;
+      const limitNum = parseInt(limit, 10);
       const nextBtn = document.getElementById("nextBtn");
+      const prevBtn = document.getElementById("prevBtn");
+      const pageBadge = document.getElementById("currentPageBadge");
+      const itemRange = document.getElementById("pageItemRange");
 
       const params = new URLSearchParams({ from, to, sort, limit });
       if (site) params.set("site_id", site);
@@ -341,7 +401,37 @@
       }
 
       nextCursor = data.next_cursor;
-      nextBtn.disabled = !nextCursor;
+
+      // Update Pagination Bar UI with exact Page Number and Item Range
+      pageBadge.textContent = `Page ${currentPage}`;
+      
+      const startItem = (currentPage - 1) * limitNum + 1;
+      const count = data.data ? data.data.length : 0;
+      const endItem = startItem + count - 1;
+
+      if (count > 0) {
+        itemRange.textContent = `Showing items ${startItem} – ${endItem}`;
+      } else {
+        itemRange.textContent = `No items`;
+      }
+
+      // Update Previous Button
+      if (currentPage > 1) {
+        prevBtn.disabled = false;
+        prevBtn.textContent = `◀ Previous (Page ${currentPage - 1})`;
+      } else {
+        prevBtn.disabled = true;
+        prevBtn.textContent = `◀ Previous Page`;
+      }
+
+      // Update Next Button with target page number
+      if (nextCursor) {
+        nextBtn.disabled = false;
+        nextBtn.textContent = `Next Page (Page ${currentPage + 1}) ➔`;
+      } else {
+        nextBtn.disabled = true;
+        nextBtn.textContent = `No more pages (End)`;
+      }
 
       const tbody = document.querySelector("#requestsTable tbody");
       tbody.innerHTML = "";
@@ -349,7 +439,6 @@
       if (!data.data || data.data.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#6b7280; padding:18px;">No matching requests found for selected filters.</td></tr>`;
         document.getElementById("reqCount").textContent = "0";
-        document.getElementById("pageInfo").textContent = "";
         return data;
       }
 
@@ -380,13 +469,22 @@
         tbody.appendChild(tr);
       }
 
-      document.getElementById("pageInfo").textContent = nextCursor ? "More pages available via cursor" : "End of results (last page)";
       return data;
     }
 
     function loadNextPage() {
       if (nextCursor) {
+        cursorHistory[currentPage] = nextCursor;
+        currentPage++;
         fetchRequestsPage(nextCursor);
+      }
+    }
+
+    function loadPrevPage() {
+      if (currentPage > 1) {
+        currentPage--;
+        const prevCursor = cursorHistory[currentPage - 1];
+        fetchRequestsPage(prevCursor);
       }
     }
 
