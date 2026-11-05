@@ -1,0 +1,8 @@
+node_modules/
+__pycache__/
+.venv/
+tmp/
+log/*.log
+.env
+.DS_Store
+
