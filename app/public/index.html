@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Building Helpdesk: Response-Time Report & SLA Dashboard</title>
+  <title>Building Helpdesk: Response-Time Report</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -10,10 +10,16 @@
       color: #1f2937;
       background: #f9fafb;
     }
-    h1, h2, h3 {
+    h1 {
       color: #111827;
-      margin-top: 18px;
+      margin-top: 10px;
       margin-bottom: 12px;
+    }
+    h2 {
+      color: #111827;
+      margin-top: 16px;
+      margin-bottom: 12px;
+      font-size: 18px;
     }
     .panel {
       background: #ffffff;
@@ -25,10 +31,9 @@
     }
     .filter-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
       gap: 14px;
       align-items: flex-end;
-      margin-bottom: 16px;
     }
     .form-group {
       display: flex;
@@ -58,17 +63,6 @@
     button.btn-primary:hover {
       background: #1d4ed8;
     }
-    button.btn-secondary {
-      background: #f3f4f6;
-      color: #374151;
-      border: 1px solid #d1d5db;
-      cursor: pointer;
-      font-weight: 500;
-      height: 38px;
-    }
-    button.btn-secondary:hover {
-      background: #e5e7eb;
-    }
     button:disabled {
       background: #9ca3af !important;
       cursor: not-allowed !important;
@@ -76,7 +70,7 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 12px;
+      margin-top: 10px;
       font-size: 14px;
     }
     th, td {
@@ -102,9 +96,9 @@
     .badge-success { background: #dcfce7; color: #166534; }
     .badge-danger { background: #fee2e2; color: #991b1b; }
     .badge-neutral { background: #f3f4f6; color: #6b7280; }
-    #status, #browseStatus {
+    #status {
       font-weight: 500;
-      margin-top: 8px;
+      margin-top: 14px;
       color: #374151;
       font-size: 14px;
     }
@@ -120,24 +114,6 @@
     }
     .sync-ready { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
     .sync-loading { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
-    .tabs {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 16px;
-      border-bottom: 2px solid #e5e7eb;
-    }
-    .tab {
-      padding: 10px 16px;
-      cursor: pointer;
-      font-weight: 600;
-      color: #6b7280;
-      border-bottom: 3px solid transparent;
-      margin-bottom: -2px;
-    }
-    .tab.active {
-      color: #2563eb;
-      border-bottom-color: #2563eb;
-    }
     .pagination-bar {
       display: flex;
       justify-content: space-between;
@@ -147,89 +123,28 @@
   </style>
 </head>
 <body>
-  <h1>Building Helpdesk: Response-Time Report & SLA Dashboard</h1>
+  <h1>Building Helpdesk: Response-Time Report</h1>
 
   <div id="syncStatus" class="sync-indicator sync-loading">
     Checking system readiness...
   </div>
 
-  <div class="tabs">
-    <div class="tab active" id="tabReport" onclick="switchTab('report')">Level 1 & 2: SLA Report (/api/sla-report)</div>
-    <div class="tab" id="tabBrowse" onclick="switchTab('browse')">Level 4: Browse, Filter & Paginate (/api/requests)</div>
-  </div>
-
-  <!-- LEVEL 1 & 2 SECTION -->
-  <div id="sectionReport">
-    <div class="panel">
-      <form id="f" style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;">
-        <div class="form-group">
-          <label>From:</label>
-          <input type="date" name="from" id="fromDate" value="2026-10-01" required>
-        </div>
-        <div class="form-group">
-          <label>To:</label>
-          <input type="date" name="to" id="toDate" value="2026-10-31" required>
-        </div>
-        <button type="submit" id="submitBtn" class="btn-primary">▶ Run Report</button>
-      </form>
-      <p id="status"></p>
-    </div>
-
-    <div class="panel">
-      <h2>Responders Summary</h2>
-      <table id="respondersTable">
-        <thead>
-          <tr>
-            <th>Staff Name</th>
-            <th>Staff ID</th>
-            <th>Total Requests</th>
-            <th>Within Target</th>
-            <th>Completed Late</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td colspan="5" style="text-align: center; color: #6b7280; padding: 18px;">Loading report...</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="panel">
-      <h2>Request Details (<span id="reqCount">0</span> rows)</h2>
-      <table id="requestsTable">
-        <thead>
-          <tr>
-            <th>Request ID</th>
-            <th>Site ID</th>
-            <th>Responder</th>
-            <th>Response Time (business mins)</th>
-            <th>Within Target?</th>
-            <th>Completed Late?</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td colspan="6" style="text-align: center; color: #6b7280; padding: 18px;">Loading report...</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- LEVEL 4 BROWSE SECTION -->
-  <div id="sectionBrowse" style="display: none;">
-    <div class="panel">
-      <h2>Filter & Sort Requests (Level 4 Contract)</h2>
+  <!-- SINGLE CONTROLS PANEL (From, To, Filters, Sorting) -->
+  <div class="panel">
+    <form id="filterForm" onsubmit="event.preventDefault(); runReport();">
       <div class="filter-grid">
         <div class="form-group">
           <label>From Date:</label>
-          <input type="date" id="bFrom" value="2026-10-01">
+          <input type="date" id="fromDate" value="2026-10-01" required>
         </div>
         <div class="form-group">
           <label>To Date:</label>
-          <input type="date" id="bTo" value="2026-10-31">
+          <input type="date" id="toDate" value="2026-10-31" required>
         </div>
         <div class="form-group">
           <label>Building / Site:</label>
-          <select id="bSite">
-            <option value="">All Sites</option>
+          <select id="siteId">
+            <option value="">All Buildings</option>
             <option value="11">Site 11 (Singapore)</option>
             <option value="12">Site 12 (Sydney)</option>
             <option value="13">Site 13 (Jakarta)</option>
@@ -237,7 +152,7 @@
         </div>
         <div class="form-group">
           <label>Completed Late:</label>
-          <select id="bLate">
+          <select id="lateFilter">
             <option value="">All</option>
             <option value="true">Late Only (true)</option>
             <option value="false">On Time Only (false)</option>
@@ -245,7 +160,7 @@
         </div>
         <div class="form-group">
           <label>Within Target:</label>
-          <select id="bTarget">
+          <select id="targetFilter">
             <option value="">All</option>
             <option value="true">Within Target (true)</option>
             <option value="false">Exceeded Target (false)</option>
@@ -253,7 +168,7 @@
         </div>
         <div class="form-group">
           <label>Sort By:</label>
-          <select id="bSort">
+          <select id="sortField">
             <option value="id">id (Ascending)</option>
             <option value="-id">-id (Descending)</option>
             <option value="response_business_minutes">response_business_minutes (Ascending)</option>
@@ -262,151 +177,126 @@
         </div>
         <div class="form-group">
           <label>Limit per page:</label>
-          <select id="bLimit">
-            <option value="10">10</option>
-            <option value="25" selected>25</option>
-            <option value="50">50</option>
+          <select id="limitPerPage">
+            <option value="25">25</option>
+            <option value="50" selected>50</option>
             <option value="100">100</option>
+            <option value="200">200</option>
           </select>
         </div>
         <div class="form-group">
-          <button class="btn-primary" onclick="browseFirstPage()">Apply Filters</button>
+          <button type="submit" id="submitBtn" class="btn-primary">▶ Run Report</button>
         </div>
       </div>
-      <p id="browseStatus"></p>
-    </div>
+    </form>
+    <p id="status"></p>
+  </div>
 
-    <div class="panel">
-      <h2>Browsing Results</h2>
-      <table id="browseTable">
-        <thead>
-          <tr>
-            <th>Request ID</th>
-            <th>Site ID</th>
-            <th>Responder ID</th>
-            <th>Responder Name</th>
-            <th>Response Minutes</th>
-            <th>Within Target?</th>
-            <th>Completed Late?</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td colspan="7" style="text-align: center; color: #6b7280; padding: 18px;">Click "Apply Filters" to browse.</td></tr>
-        </tbody>
-      </table>
+  <!-- RESPONDERS SUMMARY (LEVEL 1) -->
+  <div class="panel">
+    <h2>Responders Summary</h2>
+    <table id="respondersTable">
+      <thead>
+        <tr>
+          <th>Staff Name</th>
+          <th>Staff ID</th>
+          <th>Total Requests</th>
+          <th>Within Target</th>
+          <th>Completed Late</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="5" style="text-align: center; color: #6b7280; padding: 18px;">Loading report...</td></tr>
+      </tbody>
+    </table>
+  </div>
 
-      <div class="pagination-bar">
-        <span id="pageInfo" style="color: #6b7280; font-size: 14px;"></span>
-        <div>
-          <button id="nextBtn" class="btn-primary" onclick="browseNextPage()" disabled>Next Page (via next_cursor) ➔</button>
-        </div>
-      </div>
+  <!-- REQUEST DETAILS & BROWSING (LEVEL 1 & LEVEL 4) -->
+  <div class="panel">
+    <h2>Request Details (<span id="reqCount">0</span> rows displayed)</h2>
+    <table id="requestsTable">
+      <thead>
+        <tr>
+          <th>Request ID</th>
+          <th>Site ID</th>
+          <th>Responder ID</th>
+          <th>Responder</th>
+          <th>Response Time (business mins)</th>
+          <th>Within Target?</th>
+          <th>Completed Late?</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="7" style="text-align: center; color: #6b7280; padding: 18px;">Loading report...</td></tr>
+      </tbody>
+    </table>
+
+    <div class="pagination-bar">
+      <span id="pageInfo" style="color: #6b7280; font-size: 14px;"></span>
+      <button id="nextBtn" class="btn-primary" onclick="loadNextPage()" disabled>Next Page (via next_cursor) ➔</button>
     </div>
   </div>
 
   <script>
-    let currentNextCursor = null;
-    let currentBrowseOffset = 0;
+    let nextCursor = null;
     let hasAutoLoaded = false;
 
-    function switchTab(tab) {
-      document.getElementById("tabReport").className = tab === 'report' ? 'tab active' : 'tab';
-      document.getElementById("tabBrowse").className = tab === 'browse' ? 'tab active' : 'tab';
-      document.getElementById("sectionReport").style.display = tab === 'report' ? 'block' : 'none';
-      document.getElementById("sectionBrowse").style.display = tab === 'browse' ? 'block' : 'none';
-      if (tab === 'browse' && !currentNextCursor && currentBrowseOffset === 0) {
-        browseFirstPage();
-      }
-    }
-
-    async function loadReport() {
-      const fromVal = document.getElementById("fromDate").value;
-      const toVal = document.getElementById("toDate").value;
+    async function runReport() {
+      const from = document.getElementById("fromDate").value;
+      const to = document.getElementById("toDate").value;
       const statusEl = document.getElementById("status");
       const submitBtn = document.getElementById("submitBtn");
 
       submitBtn.disabled = true;
-      statusEl.textContent = "Loading report data...";
+      statusEl.textContent = "Loading report & requests...";
+      const t0 = performance.now();
 
       try {
-        const t0 = performance.now();
-        const res = await fetch(`/api/sla-report?from=${encodeURIComponent(fromVal)}&to=${encodeURIComponent(toVal)}`);
-        const data = await res.json();
+        // Fetch Level 1 Summary (/api/sla-report)
+        const slaPromise = fetch(`/api/sla-report?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`).then(r => r.json());
+
+        // Fetch Level 4 Requests (/api/requests) with active filters
+        const reqPromise = fetchRequestsPage(null);
+
+        const [slaData, reqData] = await Promise.all([slaPromise, reqPromise]);
         const elapsed = (performance.now() - t0).toFixed(1);
 
-        if (!res.ok) {
-          statusEl.textContent = "Error: " + (data.error || res.statusText);
-          return;
-        }
-
-        statusEl.innerHTML = `Loaded in <strong>${elapsed}ms</strong>. Found <strong>${data.requests.length}</strong> requests across <strong>${data.responders.length}</strong> responders.`;
+        statusEl.innerHTML = `Loaded in <strong>${elapsed}ms</strong>. Total range: <strong>${slaData.requests ? slaData.requests.length : 0}</strong> requests across <strong>${slaData.responders ? slaData.responders.length : 0}</strong> staff.`;
 
         // Render Responders Table
         const respondersTbody = document.querySelector("#respondersTable tbody");
         respondersTbody.innerHTML = "";
-        for (const r of data.responders) {
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td><strong>${escapeHtml(r.name)}</strong></td>
-            <td>${r.id}</td>
-            <td>${r.requests}</td>
-            <td><span class="badge badge-success">${r.within_target}</span></td>
-            <td><span class="badge ${r.completed_late > 0 ? "badge-danger" : "badge-neutral"}">${r.completed_late}</span></td>
-          `;
-          respondersTbody.appendChild(tr);
-        }
-
-        // Render Requests Table
-        document.getElementById("reqCount").textContent = data.requests.length;
-        const requestsTbody = document.querySelector("#requestsTable tbody");
-        requestsTbody.innerHTML = "";
-
-        const displayLimit = Math.min(data.requests.length, 500);
-        for (let i = 0; i < displayLimit; i++) {
-          const req = data.requests[i];
-          const tr = document.createElement("tr");
-
-          let targetBadge = '<span class="badge badge-neutral">-</span>';
-          if (req.within_target === true) targetBadge = '<span class="badge badge-success">Yes</span>';
-          else if (req.within_target === false) targetBadge = '<span class="badge badge-danger">No</span>';
-
-          let lateBadge = '<span class="badge badge-neutral">-</span>';
-          if (req.completed_late === true) lateBadge = '<span class="badge badge-danger">Late</span>';
-          else if (req.completed_late === false) lateBadge = '<span class="badge badge-success">On time</span>';
-
-          tr.innerHTML = `
-            <td>#${req.id}</td>
-            <td>Site ${req.site_id}</td>
-            <td>${req.responder ? escapeHtml(req.responder) : '<span style="color:#9ca3af">Unassigned</span>'}</td>
-            <td>${req.response_business_minutes != null ? req.response_business_minutes + " mins" : '<span style="color:#9ca3af">-</span>'}</td>
-            <td>${targetBadge}</td>
-            <td>${lateBadge}</td>
-          `;
-          requestsTbody.appendChild(tr);
-        }
-
-        if (data.requests.length > displayLimit) {
-          const tr = document.createElement("tr");
-          tr.innerHTML = `<td colspan="6" style="text-align: center; color: #6b7280; font-style: italic; padding: 12px;">... and ${data.requests.length - displayLimit} more rows.</td>`;
-          requestsTbody.appendChild(tr);
+        if (slaData.responders && slaData.responders.length > 0) {
+          for (const r of slaData.responders) {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td><strong>${escapeHtml(r.name)}</strong></td>
+              <td>${r.id}</td>
+              <td>${r.requests}</td>
+              <td><span class="badge badge-success">${r.within_target}</span></td>
+              <td><span class="badge ${r.completed_late > 0 ? "badge-danger" : "badge-neutral"}">${r.completed_late}</span></td>
+            `;
+            respondersTbody.appendChild(tr);
+          }
+        } else {
+          respondersTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#6b7280;">No responders found for this period.</td></tr>`;
         }
 
       } catch (err) {
-        statusEl.textContent = "Network error: " + err.message;
+        statusEl.textContent = "Error: " + err.message;
       } finally {
         submitBtn.disabled = false;
       }
     }
 
-    async function fetchBrowseData(cursor = null) {
-      const from = document.getElementById("bFrom").value;
-      const to = document.getElementById("bTo").value;
-      const site = document.getElementById("bSite").value;
-      const late = document.getElementById("bLate").value;
-      const target = document.getElementById("bTarget").value;
-      const sort = document.getElementById("bSort").value;
-      const limit = document.getElementById("bLimit").value;
-      const statusEl = document.getElementById("browseStatus");
+    async function fetchRequestsPage(cursor = null) {
+      const from = document.getElementById("fromDate").value;
+      const to = document.getElementById("toDate").value;
+      const site = document.getElementById("siteId").value;
+      const late = document.getElementById("lateFilter").value;
+      const target = document.getElementById("targetFilter").value;
+      const sort = document.getElementById("sortField").value;
+      const limit = document.getElementById("limitPerPage").value;
       const nextBtn = document.getElementById("nextBtn");
 
       const params = new URLSearchParams({ from, to, sort, limit });
@@ -415,70 +305,58 @@
       if (target) params.set("within_target", target);
       if (cursor) params.set("cursor", cursor);
 
-      statusEl.textContent = "Fetching page from /api/requests...";
-      const t0 = performance.now();
+      const res = await fetch(`/api/requests?${params.toString()}`);
+      const data = await res.json();
 
-      try {
-        const res = await fetch(`/api/requests?${params.toString()}`);
-        const data = await res.json();
-        const elapsed = (performance.now() - t0).toFixed(1);
-
-        if (!res.ok) {
-          statusEl.textContent = "Error: " + (data.error || res.statusText);
-          return;
-        }
-
-        currentNextCursor = data.next_cursor;
-        nextBtn.disabled = !currentNextCursor;
-
-        statusEl.innerHTML = `Loaded <strong>${data.data.length}</strong> items in <strong>${elapsed}ms</strong> via <code>GET /api/requests</code>.`;
-
-        const tbody = document.querySelector("#browseTable tbody");
-        tbody.innerHTML = "";
-
-        if (data.data.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#6b7280; padding:18px;">No matching requests found.</td></tr>`;
-          document.getElementById("pageInfo").textContent = "";
-          return;
-        }
-
-        for (const req of data.data) {
-          const tr = document.createElement("tr");
-
-          let targetBadge = '<span class="badge badge-neutral">-</span>';
-          if (req.within_target === true) targetBadge = '<span class="badge badge-success">Yes</span>';
-          else if (req.within_target === false) targetBadge = '<span class="badge badge-danger">No</span>';
-
-          let lateBadge = '<span class="badge badge-neutral">-</span>';
-          if (req.completed_late === true) lateBadge = '<span class="badge badge-danger">Late</span>';
-          else if (req.completed_late === false) lateBadge = '<span class="badge badge-success">On time</span>';
-
-          tr.innerHTML = `
-            <td>#${req.id}</td>
-            <td>Site ${req.site_id}</td>
-            <td>${req.responder_id ?? "-"}</td>
-            <td>${req.responder ? escapeHtml(req.responder) : '<span style="color:#9ca3af">Unassigned</span>'}</td>
-            <td>${req.response_business_minutes != null ? req.response_business_minutes + " mins" : '<span style="color:#9ca3af">-</span>'}</td>
-            <td>${targetBadge}</td>
-            <td>${lateBadge}</td>
-          `;
-          tbody.appendChild(tr);
-        }
-
-        document.getElementById("pageInfo").textContent = currentNextCursor ? "More pages available via cursor" : "End of results (last page)";
-      } catch (err) {
-        statusEl.textContent = "Network error: " + err.message;
+      if (!res.ok) {
+        throw new Error(data.error || res.statusText);
       }
+
+      nextCursor = data.next_cursor;
+      nextBtn.disabled = !nextCursor;
+
+      const tbody = document.querySelector("#requestsTable tbody");
+      tbody.innerHTML = "";
+
+      if (!data.data || data.data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#6b7280; padding:18px;">No matching requests found.</td></tr>`;
+        document.getElementById("reqCount").textContent = "0";
+        document.getElementById("pageInfo").textContent = "";
+        return data;
+      }
+
+      document.getElementById("reqCount").textContent = data.data.length;
+
+      for (const req of data.data) {
+        const tr = document.createElement("tr");
+
+        let targetBadge = '<span class="badge badge-neutral">-</span>';
+        if (req.within_target === true) targetBadge = '<span class="badge badge-success">Yes</span>';
+        else if (req.within_target === false) targetBadge = '<span class="badge badge-danger">No</span>';
+
+        let lateBadge = '<span class="badge badge-neutral">-</span>';
+        if (req.completed_late === true) lateBadge = '<span class="badge badge-danger">Late</span>';
+        else if (req.completed_late === false) lateBadge = '<span class="badge badge-success">On time</span>';
+
+        tr.innerHTML = `
+          <td>#${req.id}</td>
+          <td>Site ${req.site_id}</td>
+          <td>${req.responder_id ?? "-"}</td>
+          <td>${req.responder ? escapeHtml(req.responder) : '<span style="color:#9ca3af">Unassigned</span>'}</td>
+          <td>${req.response_business_minutes != null ? req.response_business_minutes + " mins" : '<span style="color:#9ca3af">-</span>'}</td>
+          <td>${targetBadge}</td>
+          <td>${lateBadge}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+
+      document.getElementById("pageInfo").textContent = nextCursor ? "More pages available via cursor" : "End of results (last page)";
+      return data;
     }
 
-    function browseFirstPage() {
-      currentNextCursor = null;
-      fetchBrowseData(null);
-    }
-
-    function browseNextPage() {
-      if (currentNextCursor) {
-        fetchBrowseData(currentNextCursor);
+    function loadNextPage() {
+      if (nextCursor) {
+        fetchRequestsPage(nextCursor);
       }
     }
 
@@ -491,7 +369,7 @@
           syncEl.textContent = "● Ready (Historical data synchronized & Live polling active)";
           if (!hasAutoLoaded) {
             hasAutoLoaded = true;
-            loadReport();
+            runReport();
           }
           return true;
         } else {
@@ -508,11 +386,6 @@
 
     setInterval(checkReadiness, 5000);
     checkReadiness();
-
-    document.getElementById("f").addEventListener("submit", (e) => {
-      e.preventDefault();
-      loadReport();
-    });
 
     function escapeHtml(str) {
       if (!str) return "";
